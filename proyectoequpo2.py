@@ -325,7 +325,12 @@ class App:
             if not n:
                 return
             #Maura isabella
-            #
+            nid = query("SELECT IFNULL(MAX(id_docente),0)+1 FROM docente", fetch=True)[0][0]
+            query("INSERT INTO docente (id_docente, nombre, materia, grupo) VALUES (%s,%s,%s,%s)", (nid, n, e_materia.get(), e_grupo.get()))
+            cargar()
+            e_nombre.delete(0, tk.END)
+            e_materia.delete(0, tk.END)
+            
         def eliminar():
             sel = tabla.selection()
             if not sel:
