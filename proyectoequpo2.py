@@ -431,6 +431,10 @@ class App:
                 messagebox.showwarning("Falta", "Pon motivo")
                 return
             #Brandon yael
+            nid = query("SELECT IFNULL(MAX(id_itinerario),0)+1 FROM itinerario", fetch=True)[0][0]
+            detalles = f"{c_alu.get()} - {txt_obs.get('1.0','end').strip()}"
+            query("INSERT INTO itinerario (id_itinerario, motivo, fecha_cita, hora, detalles) VALUES (%s,%s,%s,%s,%s)", (nid, e_motivo.get(), e_fecha.get(), e_hora.get(), detalles))
+            cargar()
            #
             e_motivo.delete(0, tk.END)
             txt_obs.delete("1.0", "end")
