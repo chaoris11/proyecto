@@ -370,6 +370,17 @@ class App:
         self.tabla_hist.pack(fill="both", expand=True, padx=10, pady=(0, 10))
         def mostrar(tipo):
             #Ximena 
+            for item in self.tabla_hist.get_children():
+                self.tabla_hist.delete(item)
+            if tipo == "Asistencias":
+                for r in query("SELECT detalle, tipo, fecha_hora FROM asistencia", fetch=True):
+                    self.tabla_hist.insert("", "end", values=(r[0], r[1], "-", r[2]))
+            elif tipo == "Justificantes":
+                for r in query("SELECT motivo, imagen, fecha FROM justificante", fetch=True):
+                    self.tabla_hist.insert("", "end", values=(r[0], "Justificante", r[1], r[2]))
+            else:
+                for r in query("SELECT descripcion, tipo, fecha FROM incidencia", fetch=True):
+                    self.tabla_hist.insert("", "end", values=(r[0], r[1], "-", r[2]))
             #
         tk.Button(btns, text=" Asistencias", bg="#0a2a52", fg="white", font=F_BTN, relief="flat", padx=20, pady=10, command=lambda: mostrar("Asistencias")).pack(side="left", padx=6)
         tk.Button(btns, text=" Justificantes", bg="#1e5aa8", fg="white", font=F_BTN, relief="flat", padx=20, pady=10, command=lambda: mostrar("Justificantes")).pack(side="left", padx=6)
