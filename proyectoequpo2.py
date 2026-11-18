@@ -420,6 +420,11 @@ class App:
         tabla.pack(fill="both", expand=True, padx=10, pady=10)
         def cargar():
             #Sahory sherlyn
+            for i in tabla.get_children():
+                tabla.delete(i)
+            for r in query("SELECT detalles, motivo, fecha_cita, hora FROM itinerario", fetch=True):
+                tabla.insert("", "end", values=r)
+        cargar()
             #
         def agregar():
             if not e_motivo.get().strip():
