@@ -40,7 +40,12 @@ F_TXT = ("Segoe UI", 11)
 F_TXT_B = ("Segoe UI", 11, "bold")
 F_BTN = ("Segoe UI", 11, "bold")
 F_BTN_MENU = ("Segoe UI", 12, "bold")
+def revisar_alertas():
 
+def color_campana():
+def descargar_pdf():
+    
+def descargar_csv():
 class Login:
     def __init__(self, root):
         self.root = root
