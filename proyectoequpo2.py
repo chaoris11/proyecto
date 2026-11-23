@@ -5,7 +5,9 @@ import calendar
 import mysql.connector
 
 
-DB_CONFIG = {
+
+HOST_SERVIDOR = "localhost"  
+DB_CONFIG = { "host": HOST_SERVIDOR, ... }
     "host": "localhost",
     "user": "root",
     "password": "",
