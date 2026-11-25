@@ -26,7 +26,7 @@ def query(sql, params=None, fetch=False):
     cur.close()
     conn.close()
     return data
-#Brandon
+ #Brandon
 C_BG = "#0a1f3a"
 C_BG2 = "#122e55"
 C_SIDE = "#071a33"
