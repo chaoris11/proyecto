@@ -1,3 +1,13 @@
+'''
+1.- No esta agregado aqui el script de la base de datos para yo poderlo copiar y pegar en xampp y crear la base de datos, 
+ya que no me deja pasar del login por lo mismo que no tengo la bd.
+2.- En login al iniciar ya tiene datos precargados y eso no es seguro, ya que cualquiera puede entrar 
+con esos datos, por lo que se recomienda quitar esos datos precargados y dejar los campos vacios para que 
+el usuario ingrese sus datos.
+3.- Quitar del login la opción de Registrate aqui
+4.- Como docente yo no puedo crear mi propia cuenta, esa función es del director. 
+
+'''
 from datetime import datetime
 import tkinter as tk
 from tkinter import messagebox, ttk, filedialog
