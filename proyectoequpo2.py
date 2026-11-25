@@ -1,15 +1,14 @@
 from datetime import datetime
 import tkinter as tk
 from tkinter import messagebox, ttk, filedialog
-import csv		
 import calendar
 import mysql.connector
+import csv
+import os
 
-
-
-HOST_SERVIDOR = "localhost"  
-DB_CONFIG = { "host": HOST_SERVIDOR, ... }
-    "host": "localhost",
+HOST_SERVIDOR = "localhost"
+DB_CONFIG = {
+    "host": HOST_SERVIDOR,
     "user": "root",
     "password": "",
     "database": "sistema_alertas_temprana"
@@ -34,6 +33,9 @@ C_SIDE = "#071a33"
 C_BTN = "#123766"
 C_BTN2 = "#1d5aa8"
 C_CAMPO = "#2a5a8a"
+C_VERDE = "#1faa55"
+C_AMARILLO = "#f5c518"
+C_ROJO = "#d92b2b"
 
 F_TIT = ("Segoe UI Black", 22)
 F_SUB = ("Segoe UI", 12, "bold")
@@ -41,12 +43,152 @@ F_TXT = ("Segoe UI", 11)
 F_TXT_B = ("Segoe UI", 11, "bold")
 F_BTN = ("Segoe UI", 11, "bold")
 F_BTN_MENU = ("Segoe UI", 12, "bold")
-def revisar_alertas():
+F_BTN_MENU_DIR = ("Segoe UI", 11, "bold")
 
-def color_campana():
+def revisar_alertas():
+    try:
+        rows = query("SELECT detalle FROM asistencia WHERE tipo='Falta'", fetch=True)
+        conteo = {}
+        for (d,) in rows:
+            nombre = d.split(" - ")[0] if " - " in d else d
+            conteo[nombre] = conteo.get(nombre, 0) + 1
+        alertas = []
+        for alumno, total in conteo.items():
+            if total >= 3:
+                alertas.append(f"⚠ {alumno} tiene {total} faltas - CITAR A PADRES")
+        return alertas, conteo
+    except:
+        return [], {}
+
+def color_campana(alertas, conteo):
+    if alertas:
+        return C_ROJO, f"🔔 {len(alertas)} ALERTAS"
+    if any(v >= 2 for v in conteo.values()):
+        return C_AMARILLO, "🔔 Cuidado"
+    return C_VERDE, "🔔 Todo bien"
+
 def descargar_pdf():
-    
+    try:
+        from reportlab.lib.pagesizes import letter
+        from reportlab.pdfgen import canvas as pdf_canvas
+        ruta = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF", "*.pdf")], initialfile="reporte_asistencias.pdf")
+        if not ruta:
+            return
+        c = pdf_canvas.Canvas(ruta, pagesize=letter)
+        c.setFont("Helvetica-Bold", 16)
+        c.drawString(50, 750, "Reporte de Asistencias - Sistema de Alertas Temprana")
+        c.setFont("Helvetica", 11)
+        y = 720
+        c.drawString(50, y, f"Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+        y -= 30
+        rows = query("SELECT detalle, tipo, fecha_hora FROM asistencia", fetch=True)
+        alertas, _ = revisar_alertas()
+        c.drawString(50, y, f"Total registros: {len(rows)} | Alertas +3 faltas: {len(alertas)}")
+        y -= 30
+        for r in rows[:40]:
+            if y < 50:
+                c.showPage()
+                y = 750
+            c.drawString(50, y, f"{r[2]} - {r[0]} - {r[1]}")
+            y -= 18
+        for a in alertas:
+            if y < 50:
+                c.showPage()
+                y = 750
+            c.drawString(50, y, a)
+            y -= 18
+        c.save()
+        messagebox.showinfo("PDF", f"PDF guardado en:\n{ruta}")
+    except Exception as e:
+        messagebox.showerror("Error PDF", f"Instala reportlab:\npip install reportlab\n\nError: {e}")
+
+def descargar_glosario_bilingue():
+    try:
+        from reportlab.lib.pagesizes import letter
+        from reportlab.lib.units import inch
+        from reportlab.lib import colors
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+        from reportlab.lib.enums import TA_LEFT
+        ruta = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF", "*.pdf")], initialfile="glosario_bilingue.pdf")
+        if not ruta:
+            return
+        doc = SimpleDocTemplate(ruta, pagesize=letter, leftMargin=0.6*inch, rightMargin=0.6*inch, topMargin=0.6*inch, bottomMargin=0.6*inch, title="Glosario Bilingue")
+        styles = getSampleStyleSheet()
+        estilo_titulo = ParagraphStyle("Titulo", parent=styles["Title"], fontSize=18, leading=22, alignment=TA_LEFT, spaceAfter=6)
+        estilo_sub = ParagraphStyle("Sub", parent=styles["Normal"], fontSize=11, leading=14, textColor=colors.HexColor("#122e55"), spaceAfter=12)
+        estilo_celda = ParagraphStyle("Celda", parent=styles["Normal"], fontSize=10, leading=13, alignment=TA_LEFT)
+        estilo_head = ParagraphStyle("Head", parent=styles["Normal"], fontSize=11, leading=14, textColor=colors.white, fontName="Helvetica-Bold")
+        contenido = []
+        contenido.append(Paragraph("Glosario Bilingue - Sistema de Alertas Temprana", estilo_titulo))
+        contenido.append(Paragraph("Espanol - English / Con definicion corta para que no se corte el texto", estilo_sub))
+        glosario = [
+            ("Abrir - Archivo", "Open - File", "Ver la lista completa de archivos."),
+            ("Agregar", "Add", "Incorporar datos o informacion nueva al sistema."),
+            ("Alerta", "Alert", "Aviso que requiere atencion inmediata."),
+            ("Alumno", "Student", "Persona que recibe educacion en la institucion."),
+            ("Archivo", "File", "Documento digital o fisico con informacion importante."),
+            ("Asistencia", "Attendance", "Registro de que una persona estuvo presente en clase."),
+            ("Avisos", "Notices / Announcements", "Comunicaciones generales para informar a los usuarios."),
+            ("Calificacion", "Grade", "Puntaje que se da por el trabajo escolar."),
+            ("Carga Masiva", "Bulk Upload", "Subir muchos datos a la vez con un archivo."),
+            ("Cerrar sesion", "Log out", "Salir de tu cuenta en el sistema de forma segura."),
+            ("Citatorio", "Summons / Citation", "Llamado a padres para una reunion."),
+            ("Contrasena", "Password", "Clave secreta para proteger y entrar a tu cuenta."),
+            ("Director", "Principal / School Administrator", "Persona con cargo de gestion en la institucion."),
+            ("Docente", "Teacher", "Persona que ensena, profesor."),
+            ("Editar", "Edit", "Modificar o cambiar informacion que ya esta registrada."),
+            ("Eliminar", "Delete", "Borrar informacion o registros que ya no se necesitan."),
+            ("Escuela Primaria", "Elementary School", "Escuela de nivel basico."),
+            ("Falta", "Absence", "Cuando un alumno no asiste a clase."),
+            ("Grupo", "Group / Class", "Conjunto de alumnos organizados que toman las mismas clases."),
+            ("Historial", "History / Record", "Registro completo de acciones, movimientos o eventos pasados."),
+            ("Horario", "Schedule / Timetable", "Tabla con las horas y dias en que se hacen las actividades."),
+            ("Incidencia", "Incident", "Evento registrado, como llegadas tarde, faltas, etc."),
+            ("Inasistencia", "Absence", "Cuando una persona no asiste a clase o a su actividad."),
+            ("Justificante", "Excuse Note / Justification", "Documento para explicar o justificar una falta o retardo."),
+            ("Nombre", "Name", "Identificacion personal por la que se reconoce a cada usuario."),
+            ("Padres de familia", "Parents", "Mama y papa del alumno."),
+            ("Reporte", "Report", "Documento que muestra informacion organizada, como estadisticas o resumenes."),
+            ("Retardo", "Late Arrival / Tardiness", "Llegada tarde a una clase o cita."),
+            ("Tutor", "Parent / Guardian", "Persona responsable del alumno."),
+        ]
+        datos = [[Paragraph("<b>Espanol</b>", estilo_head), Paragraph("<b>English</b>", estilo_head), Paragraph("<b>Definicion</b>", estilo_head)]]
+        for esp, eng, defin in glosario:
+            datos.append([Paragraph(esp, estilo_celda), Paragraph(eng, estilo_celda), Paragraph(defin, estilo_celda)])
+        tabla = Table(datos, colWidths=[1.7*inch, 1.7*inch, 3.9*inch], repeatRows=1)
+        tabla.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#071a33")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("BACKGROUND", (0, 1), (-1, -1), colors.white),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#eef3fa")]),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#122e55")),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 8),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+            ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ]))
+        contenido.append(tabla)
+        contenido.append(Spacer(1, 12))
+        contenido.append(Paragraph("Sistema de Alertas Temprana - Control Escolar", estilo_celda))
+        doc.build(contenido)
+        messagebox.showinfo("Glosario", f"Glosario bilingue guardado en:\n{ruta}")
+    except Exception as e:
+        messagebox.showerror("Error PDF", f"Instala reportlab:\npip install reportlab\n\nError: {e}")
+
 def descargar_csv():
+    ruta = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV", "*.csv")], initialfile="reporte_asistencias.csv")
+    if not ruta:
+        return
+    rows = query("SELECT detalle, tipo, fecha_hora FROM asistencia", fetch=True)
+    with open(ruta, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["Alumno", "Tipo", "Fecha"])
+        for r in rows:
+            w.writerow(r)
+    messagebox.showinfo("CSV", f"Reporte guardado en:\n{ruta}")
+
 class Login:
     def __init__(self, root):
         self.root = root
@@ -54,7 +196,7 @@ class Login:
         self.root.state('zoomed')
         self.root.configure(bg=C_BG)
         box = tk.Frame(root, bg=C_SIDE)
-        box.place(relx=0.5, rely=0.5, anchor="center", width=400, height=500)
+        box.place(relx=0.5, rely=0.5, anchor="center", width=400, height=560)
         tk.Label(box, text="CONTROL ESCOLAR", font=("Segoe UI Black", 24), bg=C_SIDE, fg="white").pack(pady=(40,5))
         tk.Label(box, text="", font=("Segoe UI", 11), bg=C_SIDE, fg="#7aa0cc").pack(pady=(0,25))
         tk.Label(box, text="Usuario:", font=F_SUB, bg=C_SIDE, fg="white", anchor="w").pack(fill="x", padx=40)
@@ -65,15 +207,16 @@ class Login:
         self.p = tk.Entry(box, font=("Segoe UI", 13), bg=C_CAMPO, fg="white", relief="flat", show="*")
         self.p.pack(fill="x", padx=40, pady=8, ipady=10)
         self.p.insert(0, "123")
-        tk.Button(box, text="INICIAR SESIÓN", bg=C_BTN2, fg="white", font=("Segoe UI Black", 12), relief="flat", command=self.login).pack(fill="x", padx=40, pady=35, ipady=12)
-
+        tk.Button(box, text="INICIAR SESIÓN", bg=C_BTN2, fg="white", font=("Segoe UI Black", 12), relief="flat", command=self.login).pack(fill="x", padx=40, pady=25, ipady=12)
+        tk.Label(box, text="¿No tienes cuenta?", font=F_TXT, bg=C_SIDE, fg="white").pack(pady=(5,0))
+        tk.Button(box, text="Regístrate aquí", font=("Segoe UI", 11, "bold", "underline"), bg=C_SIDE, fg="#7aa0cc", relief="flat", cursor="hand2", activebackground=C_SIDE, command=self.abrir_registro).pack(pady=(0,10))
     def login(self):
         u = self.u.get().lower().strip()
         p = self.p.get().strip()
         try:
             res = query("SELECT nombre_usuario FROM usuario WHERE nombre_usuario=%s AND contrasena=%s", (u, p), fetch=True)
         except Exception as e:
-            messagebox.showerror("Error BD", f"No se pudo conectar a la base:\n{e}\n\n¿Ya ejecutaste base.sql en phpMyAdmin?")
+            messagebox.showerror("Error BD", f"No se pudo conectar a la base:\n{e}\n\n¿Ya ejecutaste base.sql? ¿La IP del servidor está bien en HOST_SERVIDOR?")
             return
         if not res:
             messagebox.showerror("Error", "Usuario o contraseña incorrecto")
@@ -86,6 +229,41 @@ class Login:
         r = tk.Tk()
         App(r, info[0], info[1], info[2])
         r.mainloop()
+    def abrir_registro(self):
+        win = tk.Toplevel(self.root)
+        win.title("Crear cuenta")
+        win.geometry("400x420")
+        win.configure(bg=C_SIDE)
+        tk.Label(win, text="CREAR CUENTA", font=("Segoe UI Black", 20), bg=C_SIDE, fg="white").pack(pady=(25,5))
+        tk.Label(win, text="¿No tienes cuenta? Regístrate aquí", font=F_TXT, bg=C_SIDE, fg="#7aa0cc").pack(pady=(0,15))
+        tk.Label(win, text="Usuario nuevo:", font=F_SUB, bg=C_SIDE, fg="white", anchor="w").pack(fill="x", padx=40)
+        e_u = tk.Entry(win, font=("Segoe UI", 13), bg=C_CAMPO, fg="white", relief="flat")
+        e_u.pack(fill="x", padx=40, pady=8, ipady=10)
+        tk.Label(win, text="Contraseña:", font=F_SUB, bg=C_SIDE, fg="white", anchor="w").pack(fill="x", padx=40, pady=(10,0))
+        e_p = tk.Entry(win, font=("Segoe UI", 13), bg=C_CAMPO, fg="white", relief="flat", show="*")
+        e_p.pack(fill="x", padx=40, pady=8, ipady=10)
+        tk.Label(win, text="Rol:", font=F_SUB, bg=C_SIDE, fg="white", anchor="w").pack(fill="x", padx=40, pady=(10,0))
+        cb_rol = ttk.Combobox(win, values=["director", "docente"], font=F_TXT)
+        cb_rol.set("docente")
+        cb_rol.pack(fill="x", padx=40, pady=8, ipady=4)
+        def guardar():
+            u = e_u.get().lower().strip()
+            p = e_p.get().strip()
+            if not u or not p:
+                messagebox.showwarning("Falta", "Pon usuario y contraseña")
+                return
+            try:
+                existe = query("SELECT nombre_usuario FROM usuario WHERE nombre_usuario=%s", (u,), fetch=True)
+                if existe:
+                    messagebox.showwarning("Ya existe", "Ese usuario ya existe, pon otro")
+                    return
+                query("INSERT INTO usuario (nombre_usuario, contrasena) VALUES (%s,%s)", (u, p))
+                messagebox.showinfo("Listo", f"Cuenta creada: {u}\nYa puedes iniciar sesión")
+                win.destroy()
+            except Exception as e:
+                messagebox.showerror("Error", f"No se pudo crear la cuenta:\n{e}")
+        tk.Button(win, text="REGISTRARME", bg=C_VERDE, fg="white", font=("Segoe UI Black", 12), relief="flat", command=guardar).pack(fill="x", padx=40, pady=20, ipady=12)
+        tk.Label(win, text="Después regresa e inicia sesión\ncon tu usuario nuevo", font=F_TXT, bg=C_SIDE, fg="#7aa0cc").pack()
 
 class App:
     def __init__(self, root, rol, nombre, grupo):
@@ -98,42 +276,43 @@ class App:
         self.root.configure(bg=C_BG)
         self.root.rowconfigure(0, weight=1)
         self.root.columnconfigure(1, weight=1)
-
         self.cargar_datos_db()
-
         style = ttk.Style()
         style.theme_use("clam")
         style.configure("Treeview", rowheight=32, font=F_TXT)
         style.configure("Treeview.Heading", font=F_TXT_B, background=C_SIDE, foreground="white")
-
         self.side = tk.Frame(root, bg=C_SIDE, width=295)
         self.side.grid(row=0, column=0, sticky="nsew")
         self.side.grid_propagate(False)
-        tk.Label(self.side, text=f"Panel\n{rol.upper()}", font=("Segoe UI Black", 16), bg=C_SIDE, fg="white").pack(pady=25)
-
+        tk.Label(self.side, text=f"Panel\n{rol.upper()}", font=("Segoe UI Black", 16), bg=C_SIDE, fg="white").pack(pady=18)
         if rol == "Director":
-            mods = [("Inicio", self.inicio_dir), ("Docentes", self.panel_docentes), ("Historial", self.panel_historial), ("Avisos", self.panel_avisos_director), ("Citatorio", self.panel_citatorio)]
+            mods = [("Inicio", self.inicio_dir), ("Alumnos", self.panel_alumnos_pro), ("Docentes", self.panel_docentes), ("Alertas", self.panel_alertas), ("Historial", self.panel_historial), ("Avisos", self.panel_avisos_director), ("Citatorio", self.panel_citatorio)]
         else:
-            mods = [("Inicio", self.inicio_docente), ("Asistencias", self.panel_asistencias), ("Alumnos", self.panel_alumnos_pro), ("Incidencias", self.panel_incidencias), ("Justificantes", self.panel_justificante)]
-
+            mods = [("Inicio", self.inicio_docente), ("Asistencias", self.panel_asistencias), ("Incidencias", self.panel_incidencias), ("Justificantes", self.panel_justificante), ("Alertas", self.panel_alertas)]
+        # MENU - NO TOCADO
         for n, fn in mods:
-            tk.Button(self.side, text=f"  {n}", font=F_BTN_MENU, bg=C_BTN, fg="white", anchor="w", relief="flat", padx=20, pady=5, command=lambda f=n: self.mostrar(f)).pack(fill="x", padx=12, pady=4, ipady=12)
-
+            if rol == "Director":
+                tk.Button(self.side, text=f"  {n}", font=F_BTN_MENU_DIR, bg=C_BTN, fg="white", anchor="w", relief="flat", padx=16, pady=3, command=lambda f=n: self.mostrar(f)).pack(fill="x", padx=12, pady=2, ipady=7)
+            else:
+                tk.Button(self.side, text=f"  {n}", font=F_BTN_MENU, bg=C_BTN, fg="white", anchor="w", relief="flat", padx=20, pady=5, command=lambda f=n: self.mostrar(f)).pack(fill="x", padx=12, pady=4, ipady=12)
+        tk.Label(self.side, text="DESCARGAR REPORTE", font=F_SUB, bg=C_SIDE, fg="white").pack(pady=(12,5))
+        tk.Button(self.side, text="📄 Descargar PDF", bg=C_BTN2, fg="white", font=F_BTN, command=descargar_pdf).pack(fill="x", padx=12, pady=3, ipady=8)
         tk.Button(self.side, text="  Cerrar Sesión", bg="#5c1a1a", fg="white", font=F_BTN_MENU, relief="flat", command=self.cerrar).pack(side="bottom", fill="x", padx=12, pady=15, ipady=8)
-
         self.cont = tk.Frame(root, bg=C_BG)
         self.cont.grid(row=0, column=1, sticky="nsew")
         self.cont.rowconfigure(0, weight=1)
         self.cont.columnconfigure(0, weight=1)
-
         self.paneles = {}
         for n, fn in mods:
             p = tk.Frame(self.cont, bg=C_BG)
             p.grid(row=0, column=0, sticky="nsew")
             fn(p)
             self.paneles[n] = p
+        p_cm = tk.Frame(self.cont, bg=C_BG)
+        p_cm.grid(row=0, column=0, sticky="nsew")
+        self.panel_carga_masiva(p_cm)
+        self.paneles["Carga Masiva"] = p_cm
         self.mostrar("Inicio")
-
     def cargar_datos_db(self):
         try:
             rows = query("SELECT tipo FROM asistencia", fetch=True)
@@ -161,7 +340,6 @@ class App:
             self.avisos = []
             self.notificaciones = []
             self.citatorios = []
-
     def mostrar(self, n):
         self.paneles[n].tkraise()
         if n == "Inicio":
@@ -175,7 +353,72 @@ class App:
         f = tk.Frame(parent, bg=C_BG)
         f.pack(fill="x", padx=20, pady=12)
         tk.Label(f, text=t.upper(), font=F_TIT, bg=C_BG, fg="white").pack(side="left")
-
+        alertas, conteo = revisar_alertas()
+        col, texto = color_campana(alertas, conteo)
+        tk.Label(f, text=f"  {texto}  ", font=F_BTN, bg=col, fg="white" if col != C_AMARILLO else "black", padx=10, pady=5).pack(side="right")
+    def panel_alertas(self, parent):
+        self.encabezado(parent, "Alertas - Motor de Alertas")
+        marco = tk.Frame(parent, bg="white")
+        marco.pack(fill="both", expand=True, padx=15, pady=10)
+        alertas, conteo = revisar_alertas()
+        tk.Label(marco, text="Regla: Si un alumno tiene MÁS DE 3 FALTAS, se manda alerta y se debe citar a padres.", font=F_TXT, bg="white").pack(padx=10, pady=10, anchor="w")
+        tabla = ttk.Treeview(marco, columns=("Alumno", "Faltas", "Estado"), show="headings", height=12)
+        for c in ("Alumno", "Faltas", "Estado"):
+            tabla.heading(c, text=c)
+            tabla.column(c, width=150, anchor="center")
+        tabla.pack(fill="both", expand=True, padx=10, pady=10)
+        for alumno in self.alumnos:
+            total = conteo.get(alumno, 0)
+            estado = "🔴 ALERTA - Citar padres" if total >= 3 else ("🟡 Cuidado" if total == 2 else "🟢 Bien")
+            tabla.insert("", "end", values=(alumno, total, estado))
+        def actualizar():
+            for i in tabla.get_children():
+                tabla.delete(i)
+            alertas2, conteo2 = revisar_alertas()
+            for alumno in self.alumnos:
+                total = conteo2.get(alumno, 0)
+                estado = "🔴 ALERTA - Citar padres" if total >= 3 else ("🟡 Cuidado" if total == 2 else "🟢 Bien")
+                tabla.insert("", "end", values=(alumno, total, estado))
+            if alertas2:
+                messagebox.showwarning("Alerta", "\n".join(alertas2))
+            else:
+                messagebox.showinfo("Alertas", "Todo bien, ningún alumno tiene +3 faltas")
+      
+        tk.Button(marco, text="🔄 Revisar Alertas Ahora", bg=C_ROJO, fg="white", font=F_BTN, width=28, command=actualizar).pack(pady=5, ipady=6)
+        tk.Button(marco, text="📄 Descargar Reporte PDF", bg=C_BTN2, fg="white", font=F_BTN, width=28, command=descargar_pdf).pack(pady=5, ipady=6)
+    def panel_carga_masiva(self, parent):
+        self.encabezado(parent, "Carga Masiva")
+        marco = tk.Frame(parent, bg="white")
+        marco.pack(fill="both", expand=True, padx=15, pady=10)
+        tk.Label(marco, text="Sube un archivo para dar de alta muchos a la vez", font=F_SUB, bg="white").pack(padx=10, pady=10, anchor="w")
+        tk.Label(marco, text="Formato ALUMNOS nombre,curp,grupo,tutor  (sin encabezado, uno por línea)", font=F_TXT, bg="white").pack(padx=10, anchor="w")
+        tk.Label(marco, text="Formato DOCENTES nombre,materia,grupo", font=F_TXT, bg="white").pack(padx=10, anchor="w")
+        tk.Label(marco, text="Ejemplo alumnos.csv:\nJuan Perez,XXXX,Grupo 1,Mamá Juan\nMaria Lopez,XXXX,Grupo 1,Papá Maria", font=F_TXT, bg="#eef3fa").pack(fill="x", padx=10, pady=10)
+        def cargar_alumnos_csv():
+            ruta = filedialog.askopenfilename(filetypes=[("CSV", "*.csv")])
+            if not ruta: return
+            cont = 0
+            with open(ruta, newline="", encoding="utf-8") as f:
+                for fila in csv.reader(f):
+                    if len(fila) < 4: continue
+                    nid = query("SELECT IFNULL(MAX(id_alumno),0)+1 FROM alumno", fetch=True)[0][0]
+                    query("INSERT INTO alumno (id_alumno, nombre, curp, grupo, tutor) VALUES (%s,%s,%s,%s,%s)", (nid, fila[0].strip(), fila[1].strip(), fila[2].strip(), fila[3].strip()))
+                    cont += 1
+            messagebox.showinfo("Carga Masiva", f"Se cargaron {cont} alumnos")
+            self.cargar_datos_db()
+        def cargar_docentes_csv():
+            ruta = filedialog.askopenfilename(filetypes=[("CSV", "*.csv")])
+            if not ruta: return
+            cont = 0
+            with open(ruta, newline="", encoding="utf-8") as f:
+                for fila in csv.reader(f):
+                    if len(fila) < 3: continue
+                    nid = query("SELECT IFNULL(MAX(id_docente),0)+1 FROM docente", fetch=True)[0][0]
+                    query("INSERT INTO docente (id_docente, nombre, materia, grupo) VALUES (%s,%s,%s,%s)", (nid, fila[0].strip(), fila[1].strip(), fila[2].strip()))
+                    cont += 1
+            messagebox.showinfo("Carga Masiva", f"Se cargaron {cont} docentes")
+        tk.Button(marco, text="📂 Cargar Alumnos Masivo ", bg=C_BTN2, fg="white", font=F_BTN_MENU, width=28, command=cargar_alumnos_csv).pack(pady=8, ipady=6)
+        tk.Button(marco, text="📂 Cargar Docentes Masivo ", bg=C_BG2, fg="white", font=F_BTN_MENU, width=28, command=cargar_docentes_csv).pack(pady=8, ipady=6)
     def inicio_dir(self, parent):
         self.encabezado(parent, f"Director {self.nombre}")
         self.f_dir = tk.Frame(parent, bg=C_BG)
@@ -216,19 +459,19 @@ class App:
         tk.Label(self.box_avisos_resumen, text="AVISOS ACTIVOS", font=F_TXT_B, bg="white", fg=C_BG).pack(pady=(20, 8))
         self.lbl_avisos_num = tk.Label(self.box_avisos_resumen, text=str(len(self.avisos)), font=("Segoe UI Black", 36), bg="white", fg="#1d5aa8")
         self.lbl_avisos_num.pack()
+        tk.Button(self.f_dir, text="📘 Descargar Glosario Bilingüe", bg="#7a3fa0", fg="white", font=F_BTN, width=32, command=descargar_glosario_bilingue).grid(row=2, column=0, columnspan=2, pady=5, ipady=6)
         self.f_notif_inicio = tk.Frame(self.f_dir, bg="white", bd=2, relief="solid")
-        self.f_notif_inicio.grid(row=2, column=0, columnspan=2, sticky="nsew", pady=10)
+        self.f_notif_inicio.grid(row=3, column=0, columnspan=2, sticky="nsew", pady=12)
         header = tk.Frame(self.f_notif_inicio, bg=C_SIDE)
         header.pack(fill="x")
-        tk.Label(header, text=" NOTIFICACIONES ", font=F_SUB, bg=C_SIDE, fg="white", padx=15, pady=10).pack(side="left")
-        tk.Label(header, text=f"{len(self.notificaciones)} nuevas", font=F_TXT_B, bg=C_BTN2, fg="white", padx=10, pady=4).pack(side="right", padx=15)
+        tk.Label(header, text=" NOTIFICACIONES ", font=("Segoe UI Black", 16), bg=C_SIDE, fg="white", padx=15, pady=14).pack(side="left")
+        tk.Label(header, text=f"{len(self.notificaciones)} nuevas", font=("Segoe UI", 12, "bold"), bg=C_BTN2, fg="white", padx=14, pady=6).pack(side="right", padx=15)
         cont_notif = tk.Frame(self.f_notif_inicio, bg="white")
-        cont_notif.pack(fill="both", expand=True, padx=15, pady=12)
+        cont_notif.pack(fill="both", expand=True, padx=18, pady=16)
         for n in self.notificaciones:
             card = tk.Frame(cont_notif, bg="#eef3fa", bd=1, relief="solid")
-            card.pack(fill="x", pady=5, ipady=6)
-            tk.Label(card, text=f"> {n}", font=F_TXT, bg="#eef3fa", fg=C_BG, anchor="w", wraplength=900).pack(fill="x", padx=12)
-
+            card.pack(fill="x", pady=8, ipady=12)
+            tk.Label(card, text=f"> {n}", font=("Segoe UI", 13, "bold"), bg="#eef3fa", fg=C_BG, anchor="w", wraplength=1000).pack(fill="x", padx=16, pady=6)
     def dibujar(self):
         if not hasattr(self, 'c_bar'):
             return
@@ -253,7 +496,6 @@ class App:
             c.create_text(x + bw // 2, y1 - 12, text=str(v), font=F_TXT_B, fill=C_BG)
             c.create_text(x + bw // 2, y0 + 12, text=k, font=("Segoe UI", 9, "bold"), fill=C_BG)
             x += bw + 40
-
     def inicio_docente(self, parent):
         self.encabezado(parent, f"Docente {self.nombre} - {self.grupo}")
         main = tk.Frame(parent, bg=C_BG)
@@ -270,20 +512,22 @@ class App:
             lbl = tk.Label(card, text="0", font=("Segoe UI Black", 30), bg="white", fg=col)
             lbl.pack(pady=(0, 15))
             self.cards_doc[k] = lbl
+        bf = tk.Frame(main, bg=C_BG)
+        bf.pack(fill="x", pady=5)
+        tk.Button(bf, text="📘 Descargar Glosario Bilingüe", bg="#7a3fa0", fg="white", font=F_BTN, width=32, command=descargar_glosario_bilingue).pack(anchor="center", ipady=6)
         f_avisos = tk.Frame(main, bg="white", bd=2, relief="solid")
         f_avisos.pack(fill="both", expand=True, pady=15)
         header = tk.Frame(f_avisos, bg=C_SIDE)
         header.pack(fill="x")
-        tk.Label(header, text="  AVISOS ", font=F_SUB, bg=C_SIDE, fg="white", padx=15, pady=12).pack(side="left")
-        tk.Label(header, text=f"{len(self.avisos)} nuevos", font=F_TXT_B, bg="#1d5aa8", fg="white", padx=10, pady=4).pack(side="right", padx=15)
+        tk.Label(header, text="  AVISOS ", font=("Segoe UI Black", 16), bg=C_SIDE, fg="white", padx=15, pady=14).pack(side="left")
+        tk.Label(header, text=f"{len(self.avisos)} nuevos", font=("Segoe UI", 12, "bold"), bg="#1d5aa8", fg="white", padx=14, pady=6).pack(side="right", padx=15)
         cont_avisos = tk.Frame(f_avisos, bg="white")
-        cont_avisos.pack(fill="both", expand=True, padx=15, pady=15)
+        cont_avisos.pack(fill="both", expand=True, padx=18, pady=16)
         for av in self.avisos:
             card = tk.Frame(cont_avisos, bg="#eef3fa", bd=1, relief="solid")
-            card.pack(fill="x", pady=6, ipady=6)
-            tk.Label(card, text=f"> {av}", font=F_TXT, bg="#eef3fa", fg=C_BG, anchor="w", wraplength=800, justify="left").pack(fill="x", padx=12)
+            card.pack(fill="x", pady=8, ipady=12)
+            tk.Label(card, text=f"> {av}", font=("Segoe UI", 13, "bold"), bg="#eef3fa", fg=C_BG, anchor="w", wraplength=900, justify="left").pack(fill="x", padx=16, pady=6)
         self.root.after(200, self.actualizar_cards_doc)
-
     def actualizar_cards_doc(self):
         if not hasattr(self, 'cards_doc'):
             return
@@ -291,11 +535,11 @@ class App:
         self.cards_doc["Retardos"].config(text=str(self.contador["Retardo"]))
         self.cards_doc["Faltas"].config(text=str(self.contador["Falta"]))
         self.cards_doc["Justificantes"].config(text=str(self.contador["Justificante"]))
-
     def panel_docentes(self, parent):
         self.encabezado(parent, "Control Docentes")
         marco = tk.Frame(parent, bg="white")
         marco.pack(fill="both", expand=True, padx=15, pady=10)
+        tk.Button(marco, text="📂 Carga Masiva Docentes", bg=C_VERDE, fg="white", font=F_BTN, width=28, command=lambda: self.mostrar("Carga Masiva")).pack(pady=(10,0), ipady=6)
         form = tk.Frame(marco, bg="white")
         form.pack(fill="x", padx=10, pady=8)
         form.grid_columnconfigure(1, weight=1)
@@ -330,15 +574,12 @@ class App:
         btns.pack(fill="x", padx=10, pady=8)
         def agregar():
             n = e_nombre.get().strip()
-            if not n:
-                return
-            #Maura isabella
+            if not n: return
             nid = query("SELECT IFNULL(MAX(id_docente),0)+1 FROM docente", fetch=True)[0][0]
             query("INSERT INTO docente (id_docente, nombre, materia, grupo) VALUES (%s,%s,%s,%s)", (nid, n, e_materia.get(), e_grupo.get()))
             cargar()
             e_nombre.delete(0, tk.END)
             e_materia.delete(0, tk.END)
-            
         def eliminar():
             sel = tabla.selection()
             if not sel:
@@ -347,9 +588,9 @@ class App:
             did = tabla.item(sel[0], "values")[0]
             query("DELETE FROM docente WHERE id_docente=%s", (did,))
             tabla.delete(sel[0])
-        tk.Button(btns, text="Agregar Docente", bg=C_BTN2, fg="white", font=F_BTN, command=agregar).pack(side="left", expand=True, fill="x", padx=5, ipady=8)
-        tk.Button(btns, text="Eliminar Docente", bg=C_BG2, fg="white", font=F_BTN, command=eliminar).pack(side="left", expand=True, fill="x", padx=5, ipady=8)
-
+        # ESTOS SON LOS DE TU CAPTURA - YA MENOS ANCHOS
+        tk.Button(btns, text="Agregar Docente", bg=C_BTN2, fg="white", font=F_BTN, width=22, command=agregar).pack(side="left", padx=(0, 6), ipady=6)
+        tk.Button(btns, text="Eliminar Docente", bg=C_BG2, fg="white", font=F_BTN, width=22, command=eliminar).pack(side="left", padx=(6, 0), ipady=6)
     def panel_historial(self, parent):
         self.encabezado(parent, "Historial")
         main = tk.Frame(parent, bg=C_BG)
@@ -377,7 +618,6 @@ class App:
         self.tabla_hist.column("Detalle", width=250)
         self.tabla_hist.pack(fill="both", expand=True, padx=10, pady=(0, 10))
         def mostrar(tipo):
-            #Ximena 
             for item in self.tabla_hist.get_children():
                 self.tabla_hist.delete(item)
             if tipo == "Asistencias":
@@ -389,12 +629,11 @@ class App:
             else:
                 for r in query("SELECT descripcion, tipo, fecha FROM incidencia", fetch=True):
                     self.tabla_hist.insert("", "end", values=(r[0], r[1], "-", r[2]))
-            #
-        tk.Button(btns, text=" Asistencias", bg="#0a2a52", fg="white", font=F_BTN, relief="flat", padx=20, pady=10, command=lambda: mostrar("Asistencias")).pack(side="left", padx=6)
-        tk.Button(btns, text=" Justificantes", bg="#1e5aa8", fg="white", font=F_BTN, relief="flat", padx=20, pady=10, command=lambda: mostrar("Justificantes")).pack(side="left", padx=6)
-        tk.Button(btns, text=" Incidencias", bg="#122e55", fg="white", font=F_BTN, relief="flat", padx=20, pady=10, command=lambda: mostrar("Incidencias")).pack(side="left", padx=6)
+        tk.Button(btns, text=" Asistencias", bg="#0a2a52", fg="white", font=F_BTN, relief="flat", padx=10, pady=6, command=lambda: mostrar("Asistencias")).pack(side="left", padx=4)
+        tk.Button(btns, text=" Justificantes", bg="#1e5aa8", fg="white", font=F_BTN, relief="flat", padx=10, pady=6, command=lambda: mostrar("Justificantes")).pack(side="left", padx=4)
+        tk.Button(btns, text=" Incidencias", bg="#122e55", fg="white", font=F_BTN, relief="flat", padx=10, pady=6, command=lambda: mostrar("Incidencias")).pack(side="left", padx=4)
+        tk.Button(btns, text="📄 PDF", bg=C_BTN2, fg="white", font=F_BTN, relief="flat", padx=10, pady=6, command=descargar_pdf).pack(side="left", padx=4)
         mostrar("Asistencias")
-
     def panel_citatorio(self, parent):
         self.encabezado(parent, "Citatorio")
         marco = tk.Frame(parent, bg="white")
@@ -427,27 +666,22 @@ class App:
             tabla.column(col, width=130, anchor="center")
         tabla.pack(fill="both", expand=True, padx=10, pady=10)
         def cargar():
-            #Sahory sherlyn
             for i in tabla.get_children():
                 tabla.delete(i)
             for r in query("SELECT detalles, motivo, fecha_cita, hora FROM itinerario", fetch=True):
                 tabla.insert("", "end", values=r)
         cargar()
-            #
         def agregar():
             if not e_motivo.get().strip():
                 messagebox.showwarning("Falta", "Pon motivo")
                 return
-            #Brandon yael
             nid = query("SELECT IFNULL(MAX(id_itinerario),0)+1 FROM itinerario", fetch=True)[0][0]
             detalles = f"{c_alu.get()} - {txt_obs.get('1.0','end').strip()}"
             query("INSERT INTO itinerario (id_itinerario, motivo, fecha_cita, hora, detalles) VALUES (%s,%s,%s,%s,%s)", (nid, e_motivo.get(), e_fecha.get(), e_hora.get(), detalles))
             cargar()
-           #
             e_motivo.delete(0, tk.END)
             txt_obs.delete("1.0", "end")
-        tk.Button(marco, text="Crear Citatorio", bg=C_BTN2, fg="white", font=F_BTN, command=agregar).pack(fill="x", padx=10, pady=10, ipady=8)
-
+        tk.Button(marco, text="Crear Citatorio", bg=C_BTN2, fg="white", font=F_BTN, width=28, command=agregar).pack(pady=10, ipady=6)
     def panel_avisos_director(self, parent):
         self.encabezado(parent, "Avisos")
         self.f_crear = tk.Frame(parent, bg="white")
@@ -505,9 +739,8 @@ class App:
             self.tabla_avisos.delete(sel[0])
         btns_aviso = tk.Frame(form, bg="white")
         btns_aviso.grid(row=3, column=0, columnspan=2, sticky="ew", pady=10)
-        tk.Button(btns_aviso, text="Publicar Aviso", bg=C_BTN2, fg="white", font=F_BTN, command=crear_aviso).pack(side="left", expand=True, fill="x", padx=(0, 5), ipady=8)
-        tk.Button(btns_aviso, text="Eliminar Aviso", bg=C_BG2, fg="white", font=F_BTN, command=eliminar_aviso).pack(side="left", expand=True, fill="x", padx=(5, 0), ipady=8)
-
+        tk.Button(btns_aviso, text="Publicar Aviso", bg=C_BTN2, fg="white", font=F_BTN, width=22, command=crear_aviso).pack(side="left", padx=(0, 6), ipady=6)
+        tk.Button(btns_aviso, text="Eliminar Aviso", bg=C_BG2, fg="white", font=F_BTN, width=22, command=eliminar_aviso).pack(side="left", padx=(6, 0), ipady=6)
     def panel_asistencias(self, parent):
         self.encabezado(parent, "Asistencias")
         marco = tk.Frame(parent, bg="white")
@@ -543,16 +776,22 @@ class App:
                 query("INSERT INTO asistencia (id_registro, tipo, fecha_hora, detalle) VALUES (%s,%s,%s,%s)", (nid, e, datetime.now().strftime("%d/%m %H:%M"), f"{a} - {e}"))
                 self.contador[e] += 1
                 self.actualizar_cards_doc()
+                if e == "Falta":
+                    alertas, conteo = revisar_alertas()
+                    for al in alertas:
+                        if a in al:
+                            messagebox.showwarning("⚠ ALERTA +3 FALTAS", f"{a} ya tiene 3 o más faltas.\nSe debe citar a sus padres.")
             btns = tk.Frame(row, bg="#f2f6fa")
             btns.pack(side="right", padx=15)
             for txt in ["Asistencia", "Retardo", "Falta", "Justificante"]:
                 tk.Button(btns, text=txt, bg=C_BTN, fg="white", font=("Segoe UI", 11, "bold"), relief="flat", padx=14, pady=8, command=lambda a=alumno, e=txt, l=lbl: marcar(a, e, l)).pack(side="left", padx=4)
-        tk.Button(marco, text="Guardar Asistencias", bg="#1d5aa8", fg="white", font=("Segoe UI", 12, "bold"), command=lambda: messagebox.showinfo("OK", "Asistencias guardadas en la base de datos")).pack(fill="x", padx=10, pady=10, ipady=10)
-
+        tk.Button(marco, text="Guardar Asistencias", bg="#1d5aa8", fg="white", font=("Segoe UI", 12, "bold"), width=28, command=lambda: messagebox.showinfo("OK", "Asistencias guardadas en la base de datos")).pack(pady=10, ipady=6)
+        tk.Button(marco, text="📄 Descargar Reporte PDF", bg=C_BTN2, fg="white", font=("Segoe UI", 12, "bold"), width=28, command=descargar_pdf).pack(pady=5, ipady=6)
     def panel_alumnos_pro(self, parent):
-        self.encabezado(parent, "Agregar Alumnos")
+        self.encabezado(parent, "Agregar Alumnos - Solo Director")
         marco = tk.Frame(parent, bg="white")
         marco.pack(fill="both", expand=True, padx=15, pady=10)
+        tk.Button(marco, text="📂 Carga Masiva Alumnos", bg=C_VERDE, fg="white", font=F_BTN, width=28, command=lambda: self.mostrar("Carga Masiva")).pack(pady=(10,0), ipady=6)
         form = tk.Frame(marco, bg="#eef3fa", bd=1, relief="solid")
         form.pack(fill="x", padx=10, pady=10)
         form.grid_columnconfigure(1, weight=1)
@@ -604,9 +843,9 @@ class App:
                 aid = tabla.item(sel[0], "values")[0]
                 query("DELETE FROM alumno WHERE id_alumno=%s", (aid,))
                 tabla.delete(sel[0])
-        tk.Button(btns, text=" Añadir Alumno", bg=C_BTN2, fg="white", font=F_BTN_MENU, command=agregar).pack(side="left", expand=True, fill="x", padx=5, ipady=10)
-        tk.Button(btns, text=" Dar de Baja", bg=C_BG2, fg="white", font=F_BTN_MENU, command=baja).pack(side="left", expand=True, fill="x", padx=5, ipady=10)
-
+      
+        tk.Button(btns, text=" Añadir Alumno", bg=C_BTN2, fg="white", font=F_BTN_MENU, width=22, command=agregar).pack(side="left", padx=(0, 6), ipady=6)
+        tk.Button(btns, text=" Dar de Baja", bg=C_BG2, fg="white", font=F_BTN_MENU, width=22, command=baja).pack(side="left", padx=(6, 0), ipady=6)
     def panel_incidencias(self, parent):
         self.encabezado(parent, "Incidencias")
         marco = tk.Frame(parent, bg="white")
@@ -643,16 +882,14 @@ class App:
         cargar()
         def guardar():
             causa = txt.get("1.0", "end").strip()
-            if not causa:
-                return
+            if not causa: return
             fecha = datetime.now().strftime("%d/%m %H:%M")
             nid = query("SELECT IFNULL(MAX(id_incidencia),0)+1 FROM incidencia", fetch=True)[0][0]
             desc = f"{c_alu.get()} - {causa}"
             query("INSERT INTO incidencia (id_incidencia, tipo, descripcion, fecha) VALUES (%s,%s,%s,%s)", (nid, var.get(), desc, fecha))
             cargar()
             txt.delete("1.0", "end")
-        tk.Button(btn_f, text="Enviar Incidencia", bg=C_SIDE, fg="white", font=F_BTN, command=guardar).pack(fill="x", ipady=6)
-
+        tk.Button(btn_f, text="Enviar Incidencia", bg=C_SIDE, fg="white", font=F_BTN, width=28, command=guardar).pack(pady=4, ipady=6)
     def panel_justificante(self, parent):
         self.encabezado(parent, "Justificantes")
         marco = tk.Frame(parent, bg="white")
@@ -691,8 +928,7 @@ class App:
                 self.lbl_ruta.config(text=f"Imagen: {ruta}")
         def guardar():
             m = txt.get("1.0", "end").strip()
-            if not m:
-                return
+            if not m: return
             fecha = datetime.now().strftime("%d/%m %H:%M")
             img = self.lbl_ruta.cget('text') if "Imagen:" in self.lbl_ruta.cget('text') else "Sin imagen"
             nid = query("SELECT IFNULL(MAX(id_justificante),0)+1 FROM justificante", fetch=True)[0][0]
@@ -708,9 +944,10 @@ class App:
                 jid = tabla.item(sel[0], "values")[0]
                 query("DELETE FROM justificante WHERE id_justificante=%s", (jid,))
                 tabla.delete(sel[0])
-        tk.Button(btns, text=" Agregar Imagen", bg=C_BTN2, fg="white", font=F_BTN, command=abrir).pack(side="left", expand=True, fill="x", padx=3, ipady=6)
-        tk.Button(btns, text=" Guardar", bg=C_SIDE, fg="white", font=F_BTN, command=guardar).pack(side="left", expand=True, fill="x", padx=3, ipady=6)
-        tk.Button(marco, text="Eliminar Seleccionado", bg=C_BG2, fg="white", font=F_BTN, command=eliminar).pack(fill="x", padx=10, pady=8, ipady=5)
+      
+        tk.Button(btns, text=" Agregar Imagen", bg=C_BTN2, fg="white", font=F_BTN, width=22, command=abrir).pack(side="left", padx=(0, 6), ipady=6)
+        tk.Button(btns, text=" Guardar", bg=C_SIDE, fg="white", font=F_BTN, width=22, command=guardar).pack(side="left", padx=(6, 0), ipady=6)
+        tk.Button(marco, text="Eliminar Seleccionado", bg=C_BG2, fg="white", font=F_BTN, width=28, command=eliminar).pack(pady=8, ipady=6)
 
 if __name__ == "__main__":
     root = tk.Tk()
