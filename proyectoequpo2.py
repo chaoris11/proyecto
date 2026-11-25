@@ -36,7 +36,7 @@ def query(sql, params=None, fetch=False):
     cur.close()
     conn.close()
     return data
-#Brandon
+ #Brandon
 C_BG = "#0a1f3a"
 C_BG2 = "#122e55"
 C_SIDE = "#071a33"
@@ -963,3 +963,95 @@ if __name__ == "__main__":
     root = tk.Tk()
     Login(root)
     root.mainloop()
+
+# -- BASE DE DATOS: sistema_alertas_temprana
+# -- Para el sistema de alertas temprana :)
+#
+# CREATE DATABASE IF NOT EXISTS sistema_alertas_temprana;
+# USE sistema_alertas_temprana;
+#
+# -- TABLA 1: usuario - Se usa en el Login
+# CREATE TABLE IF NOT EXISTS usuario (
+#     id_usuario INT PRIMARY KEY AUTO_INCREMENT,
+#     nombre_usuario VARCHAR(50) NOT NULL,
+#     contrasena VARCHAR(50) NOT NULL
+# );
+#
+# INSERT INTO usuario (nombre_usuario, contrasena) VALUES
+# ('director', '123'),
+# ('docente', '123');
+#
+# -- TABLA 2: alumno - Se usa en Alumnos y Asistencias
+# CREATE TABLE IF NOT EXISTS alumno (
+#     id_alumno INT PRIMARY KEY,
+#     nombre VARCHAR(100) NOT NULL,
+#     curp VARCHAR(20),
+#     grupo VARCHAR(20),
+#     tutor VARCHAR(100)
+# );
+#
+# INSERT INTO alumno (id_alumno, nombre, curp, grupo, tutor) VALUES
+# (1, 'Alumno 1', 'XXXX', 'Grupo 1', 'Mamá de Alumno 1'),
+# (2, 'Alumno 2', 'XXXX', 'Grupo 1', 'Mamá de Alumno 2'),
+# (3, 'Alumno 3', 'XXXX', 'Grupo 1', 'Mamá de Alumno 3'),
+# (4, 'Alumno 4', 'XXXX', 'Grupo 1', 'Mamá de Alumno 4'),
+# (5, 'Alumno 5', 'XXXX', 'Grupo 1', 'Mamá de Alumno 5');
+#
+# -- TABLA 3: docente - Se usa en Control Docentes y en Inicio del Director
+# CREATE TABLE IF NOT EXISTS docente (
+#     id_docente INT PRIMARY KEY,
+#     nombre VARCHAR(100) NOT NULL,
+#     materia VARCHAR(50),
+#     grupo VARCHAR(20)
+# );
+#
+# INSERT INTO docente (id_docente, nombre, materia, grupo) VALUES
+# (1, 'Panchito', 'Español', 'Grupo 1'),
+# (2, 'Maestra Ana', 'Matemáticas', 'Grupo 2');
+#
+# -- TABLA 4: asistencia - Se usa en Asistencias, Inicio y Historial
+# -- tipo puede ser: Asistencia, Retardo, Falta, Justificante
+# CREATE TABLE IF NOT EXISTS asistencia (
+#     id_registro INT PRIMARY KEY,
+#     tipo VARCHAR(20) NOT NULL,
+#     fecha_hora VARCHAR(30),
+#     detalle VARCHAR(200)
+# );
+#
+# -- TABLA 5: justificante - Se usa en Justificantes e Historial
+# CREATE TABLE IF NOT EXISTS justificante (
+#     id_justificante INT PRIMARY KEY,
+#     motivo VARCHAR(200) NOT NULL,
+#     imagen VARCHAR(300),
+#     fecha VARCHAR(30)
+# );
+#
+# -- TABLA 6: incidencia - Se usa en Incidencias, Notificaciones e Historial
+# -- tipo puede ser: Leve, Grave
+# CREATE TABLE IF NOT EXISTS incidencia (
+#     id_incidencia INT PRIMARY KEY,
+#     tipo VARCHAR(20),
+#     descripcion VARCHAR(300),
+#     fecha VARCHAR(30)
+# );
+#
+# -- TABLA 7: aviso - Se usa en Avisos del Director y en Inicio del Docente
+# CREATE TABLE IF NOT EXISTS aviso (
+#     id_aviso INT PRIMARY KEY,
+#     destinatario VARCHAR(50),
+#     asunto VARCHAR(100),
+#     mensaje VARCHAR(500),
+#     fecha VARCHAR(30)
+# );
+#
+# INSERT INTO aviso (id_aviso, destinatario, asunto, mensaje, fecha) VALUES
+# (1, 'Todos los docentes', 'Bienvenidos', 'Bienvenidos al sistema', '20/11/2026');
+#
+# -- TABLA 8: itinerario - Se usa en Citatorio para citar a mamá / papá
+# CREATE TABLE IF NOT EXISTS itinerario (
+#     id_itinerario INT PRIMARY KEY,
+#     motivo VARCHAR(100),
+#     fecha_cita VARCHAR(30),
+#     hora VARCHAR(20),
+#     detalles VARCHAR(300)
+# );
