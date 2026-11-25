@@ -66,7 +66,7 @@ def color_campana(alertas, conteo):
     if any(v >= 2 for v in conteo.values()):
         return C_AMARILLO, "🔔 Cuidado"
     return C_VERDE, "🔔 Todo bien"
-
+#ximena boton descqrgar pdf
 def descargar_pdf():
     try:
         from reportlab.lib.pagesizes import letter
