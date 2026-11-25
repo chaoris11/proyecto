@@ -1,11 +1,105 @@
 '''
-1.- No esta agregado aqui el script de la base de datos para yo poderlo copiar y pegar en xampp y crear la base de datos, 
-ya que no me deja pasar del login por lo mismo que no tengo la bd.
-2.- En login al iniciar ya tiene datos precargados y eso no es seguro, ya que cualquiera puede entrar 
-con esos datos, por lo que se recomienda quitar esos datos precargados y dejar los campos vacios para que 
-el usuario ingrese sus datos.
-3.- Quitar del login la opción de Registrate aqui
-4.- Como docente yo no puedo crear mi propia cuenta, esa función es del director. 
+
+# -- BASE DE DATOS: sistema_alertas_temprana
+# -- Para el sistema de alertas temprana :)
+#
+# CREATE DATABASE IF NOT EXISTS sistema_alertas_temprana;
+# USE sistema_alertas_temprana;
+#
+# -- TABLA 1: usuario - Se usa en el Login
+# CREATE TABLE IF NOT EXISTS usuario (
+#     id_usuario INT PRIMARY KEY AUTO_INCREMENT,
+#     nombre_usuario VARCHAR(50) NOT NULL,
+#     contrasena VARCHAR(50) NOT NULL
+# );
+#
+# INSERT INTO usuario (nombre_usuario, contrasena) VALUES
+# ('director', '123'),
+# ('docente', '123');
+#
+# -- TABLA 2: alumno - Se usa en Alumnos y Asistencias
+# CREATE TABLE IF NOT EXISTS alumno (
+#     id_alumno INT PRIMARY KEY,
+#     nombre VARCHAR(100) NOT NULL,
+#     curp VARCHAR(20),
+#     grupo VARCHAR(20),
+#     tutor VARCHAR(100)
+# );
+#
+# INSERT INTO alumno (id_alumno, nombre, curp, grupo, tutor) VALUES
+# (1, 'Alumno 1', 'XXXX', 'Grupo 1', 'Mamá de Alumno 1'),
+# (2, 'Alumno 2', 'XXXX', 'Grupo 1', 'Mamá de Alumno 2'),
+# (3, 'Alumno 3', 'XXXX', 'Grupo 1', 'Mamá de Alumno 3'),
+# (4, 'Alumno 4', 'XXXX', 'Grupo 1', 'Mamá de Alumno 4'),
+# (5, 'Alumno 5', 'XXXX', 'Grupo 1', 'Mamá de Alumno 5');
+#
+# -- TABLA 3: docente - Se usa en Control Docentes y en Inicio del Director
+# CREATE TABLE IF NOT EXISTS docente (
+#     id_docente INT PRIMARY KEY,
+#     nombre VARCHAR(100) NOT NULL,
+#     materia VARCHAR(50),
+#     grupo VARCHAR(20)
+# );
+#
+# INSERT INTO docente (id_docente, nombre, materia, grupo) VALUES
+# (1, 'Panchito', 'Español', 'Grupo 1'),
+# (2, 'Maestra Ana', 'Matemáticas', 'Grupo 2');
+#
+# -- TABLA 4: asistencia - Se usa en Asistencias, Inicio y Historial
+# -- tipo puede ser: Asistencia, Retardo, Fsalta, Justificante
+# CREATE TABLE IF NOT EXISTS asistencia (
+#     id_registro INT PRIMARY KEY,
+#     tipo VARCHAR(20) NOT NULL,
+#     fecha_hora VARCHAR(30),
+#     detalle VARCHAR(200)
+# );
+#
+# -- TABLA 5: justificante - Se usa en Justificantes e Historial
+# CREATE TABLE IF NOT EXISTS justificante (
+#     id_justificante INT PRIMARY KEY,
+#     motivo VARCHAR(200) NOT NULL,
+#     imagen VARCHAR(300),
+#     fecha VARCHAR(30)
+# );
+#
+# -- TABLA 6: incidencia - Se usa en Incidencias, Notificaciones e Historial
+# -- tipo puede ser: Leve, Grave
+# CREATE TABLE IF NOT EXISTS incidencia (
+#     id_incidencia INT PRIMARY KEY,
+#     tipo VARCHAR(20),
+#     descripcion VARCHAR(300),
+#     fecha VARCHAR(30)
+# );
+#
+# -- TABLA 7: aviso - Se usa en Avisos del Director y en Inicio del Docente
+# CREATE TABLE IF NOT EXISTS aviso (
+#     id_aviso INT PRIMARY KEY,
+#     destinatario VARCHAR(50),
+#     asunto VARCHAR(100),
+#     mensaje VARCHAR(500),
+#     fecha VARCHAR(30)
+# );
+#
+# INSERT INTO aviso (id_aviso, destinatario, asunto, mensaje, fecha) VALUES
+# (1, 'Todos los docentes', 'Bienvenidos', 'Bienvenidos al sistema', '20/11/2026');
+#
+# -- TABLA 8: itinerario - Se usa en Citatorio para citar a mamá / papá
+# CREATE TABLE IF NOT EXISTS itinerario (
+#     id_itinerario INT PRIMARY KEY,
+#     motivo VARCHAR(100),
+#     fecha_cita VARCHAR(30),
+#     hora VARCHAR(20),
+#     detalles VARCHAR(300)
+# );
+
+
+
+
+
+
+#docente-123
+#director-123
+
 
 '''
 from datetime import datetime
@@ -212,14 +306,13 @@ class Login:
         tk.Label(box, text="Usuario:", font=F_SUB, bg=C_SIDE, fg="white", anchor="w").pack(fill="x", padx=40)
         self.u = tk.Entry(box, font=("Segoe UI", 13), bg=C_CAMPO, fg="white", relief="flat")
         self.u.pack(fill="x", padx=40, pady=8, ipady=10)
-        self.u.insert(0, "director")
+       
         tk.Label(box, text="Contraseña:", font=F_SUB, bg=C_SIDE, fg="white", anchor="w").pack(fill="x", padx=40, pady=(10,0))
         self.p = tk.Entry(box, font=("Segoe UI", 13), bg=C_CAMPO, fg="white", relief="flat", show="*")
         self.p.pack(fill="x", padx=40, pady=8, ipady=10)
-        self.p.insert(0, "123")
+       
         tk.Button(box, text="INICIAR SESIÓN", bg=C_BTN2, fg="white", font=("Segoe UI Black", 12), relief="flat", command=self.login).pack(fill="x", padx=40, pady=25, ipady=12)
-        tk.Label(box, text="¿No tienes cuenta?", font=F_TXT, bg=C_SIDE, fg="white").pack(pady=(5,0))
-        tk.Button(box, text="Regístrate aquí", font=("Segoe UI", 11, "bold", "underline"), bg=C_SIDE, fg="#7aa0cc", relief="flat", cursor="hand2", activebackground=C_SIDE, command=self.abrir_registro).pack(pady=(0,10))
+        
     def login(self):
         u = self.u.get().lower().strip()
         p = self.p.get().strip()
@@ -239,42 +332,7 @@ class Login:
         r = tk.Tk()
         App(r, info[0], info[1], info[2])
         r.mainloop()
-    def abrir_registro(self):
-        win = tk.Toplevel(self.root)
-        win.title("Crear cuenta")
-        win.geometry("400x420")
-        win.configure(bg=C_SIDE)
-        tk.Label(win, text="CREAR CUENTA", font=("Segoe UI Black", 20), bg=C_SIDE, fg="white").pack(pady=(25,5))
-        tk.Label(win, text="¿No tienes cuenta? Regístrate aquí", font=F_TXT, bg=C_SIDE, fg="#7aa0cc").pack(pady=(0,15))
-        tk.Label(win, text="Usuario nuevo:", font=F_SUB, bg=C_SIDE, fg="white", anchor="w").pack(fill="x", padx=40)
-        e_u = tk.Entry(win, font=("Segoe UI", 13), bg=C_CAMPO, fg="white", relief="flat")
-        e_u.pack(fill="x", padx=40, pady=8, ipady=10)
-        tk.Label(win, text="Contraseña:", font=F_SUB, bg=C_SIDE, fg="white", anchor="w").pack(fill="x", padx=40, pady=(10,0))
-        e_p = tk.Entry(win, font=("Segoe UI", 13), bg=C_CAMPO, fg="white", relief="flat", show="*")
-        e_p.pack(fill="x", padx=40, pady=8, ipady=10)
-        tk.Label(win, text="Rol:", font=F_SUB, bg=C_SIDE, fg="white", anchor="w").pack(fill="x", padx=40, pady=(10,0))
-        cb_rol = ttk.Combobox(win, values=["director", "docente"], font=F_TXT)
-        cb_rol.set("docente")
-        cb_rol.pack(fill="x", padx=40, pady=8, ipady=4)
-        def guardar():
-            u = e_u.get().lower().strip()
-            p = e_p.get().strip()
-            if not u or not p:
-                messagebox.showwarning("Falta", "Pon usuario y contraseña")
-                return
-            try:
-                existe = query("SELECT nombre_usuario FROM usuario WHERE nombre_usuario=%s", (u,), fetch=True)
-                if existe:
-                    messagebox.showwarning("Ya existe", "Ese usuario ya existe, pon otro")
-                    return
-                query("INSERT INTO usuario (nombre_usuario, contrasena) VALUES (%s,%s)", (u, p))
-                messagebox.showinfo("Listo", f"Cuenta creada: {u}\nYa puedes iniciar sesión")
-                win.destroy()
-            except Exception as e:
-                messagebox.showerror("Error", f"No se pudo crear la cuenta:\n{e}")
-        tk.Button(win, text="REGISTRARME", bg=C_VERDE, fg="white", font=("Segoe UI Black", 12), relief="flat", command=guardar).pack(fill="x", padx=40, pady=20, ipady=12)
-        tk.Label(win, text="Después regresa e inicia sesión\ncon tu usuario nuevo", font=F_TXT, bg=C_SIDE, fg="#7aa0cc").pack()
-
+    
 class App:
     def __init__(self, root, rol, nombre, grupo):
         self.root = root
