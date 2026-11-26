@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS itinerario (
     hora VARCHAR(20),
     detalles VARCHAR(300)
 );
-#docente-123s
+#docente-123
 #director-123
 
 
